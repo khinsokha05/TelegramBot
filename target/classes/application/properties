@@ -1,0 +1,15 @@
+# Telegram Bot Credentials
+telegram.bot.username=@SokhaSavebot
+telegram.bot.token=bot6195519007:AAEcb8KEugXODgfHz_-vkgS2rXrQ7-ow_pc
+
+# Server Port (optional)
+server.port=8080
+
+# Logging Configuration
+logging.level.org.springframework.context=DEBUG
+logging.level.org.springframework.beans=DEBUG
+logging.level.com.telegramskbot=DEBUG
+
+# Spring Boot Configuration
+spring.main.banner-mode=off
+spring.application.name=telegram-bot
