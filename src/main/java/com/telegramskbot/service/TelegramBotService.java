@@ -1,6 +1,7 @@
 package com.telegramskbot.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -11,7 +12,8 @@ import com.telegramskbot.model.UpdateMessage;
 public class TelegramBotService {
 
     private final static String BOT_API_URL = "https://api.telegram.org/bot";
-    private final static String BOT_TOKEN = "6195519007:AAEcb8KEugXODgfHz_-vkgS2rXrQ7-ow_pc";
+    private final static String BOT_TOKEN = "6195519007:AAFD7fSkiyD4Tlds-zb_MbcaeMpmPxPHUYo";
+
     private static RestTemplate restTemplate = new RestTemplate();
 
     // Constructor-based dependency injection

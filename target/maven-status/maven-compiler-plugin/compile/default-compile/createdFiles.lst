@@ -1,1 +1,13 @@
-com\telegramskbot\Main.class
+com\telegramskbot\config\AppConfig.class
+com\telegramskbot\model\TelegramBot.class
+com\telegramskbot\TbotApplication.class
+com\telegramskbot\controller\TelegramBotController.class
+com\telegramskbot\RestConnector\Rest.class
+com\telegramskbot\service\TelegramBotService.class
+com\telegramskbot\helper\MessageHelper.class
+com\telegramskbot\service\AlertSchedulerService.class
+com\telegramskbot\model\SendMessage.class
+com\telegramskbot\pattern\StringUtil.class
+com\telegramskbot\model\UpdateMessage.class
+com\telegramskbot\Response\ResultMessage.class
+com\telegramskbot\Response\ResultResponse.class

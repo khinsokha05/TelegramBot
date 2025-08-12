@@ -1,32 +1,36 @@
 package com.telegramskbot;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
 import com.telegramskbot.model.UpdateMessage;
 import com.telegramskbot.service.TelegramBotService;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 @SpringBootApplication
 @EnableScheduling
 public class TbotApplication {
 
-        public static void main(String[] args) throws TelegramApiException {
-            SpringApplication.run(TbotApplication.class, args);
-            System.out.println("Hello world!");
-    
-            try{
-                UpdateMessage send = new UpdateMessage();
-                send.setMessage("Hello from Spring Boot!0000000000");
-                send.setChatId("2126941820");
-                TelegramBotService.sendMessage(send);
+    public static void main(String[] args) {
+        var ctx = SpringApplication.run(TbotApplication.class, args);
+        System.out.println("Hello world!");
 
-              
+        try {
+            // Get the Spring bean (non-static)
+            TelegramBotService bot = ctx.getBean(TelegramBotService.class);
 
-            }catch(Exception e){
-                System.out.println(e);
-            }
- 
+            // Read chat id from properties (don’t hardcode)
+            Environment env = ctx.getEnvironment();
+            String chatId = env.getProperty("telegram.chat.id", "2126941820"); // fallback if missing
 
+            UpdateMessage send = new UpdateMessage();
+            send.setMessage("Hello");
+            send.setChatId(chatId);
+            // send.setSetParseMode("Markdown");
 
+            bot.sendMessage(send);
+        } catch (Exception e) {
+            System.out.println("Failed to send message: " + e.getMessage());
+        }
     }
-
 }
