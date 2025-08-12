@@ -25,7 +25,11 @@ public class MessageHelper {
     // Reuse one Gson instance
     private final Gson gson = new Gson();
 
-    public MessageHelper(@Value("${telegram.chat.id}") String defaultChatId) {
+    // Inject CommandHandler
+    private final CommandHandler commandHandler;
+
+    public MessageHelper(@Value("${telegram.chat.id}") String defaultChatId, CommandHandler commandHandler) {
+        this.commandHandler = commandHandler;
         this.defaultChatId = defaultChatId;
     }
 
@@ -50,29 +54,49 @@ public class MessageHelper {
                 Long updateId = getAsLong(update, "update_id");
                 if (updateId == null || processedUpdates.contains(updateId)) continue;
 
-                // Prefer "message", fall back to "edited_message" or "channel_post" if needed
+                // Prefer "message", fall back to "edited_message" or "channel_post"
                 JsonObject message = getAsObject(update, "message");
                 if (message == null) message = getAsObject(update, "edited_message");
                 if (message == null) message = getAsObject(update, "channel_post");
                 if (message == null) {
-                    processedUpdates.add(updateId); // mark anyway to avoid re-processing
-                    continue;
-                }
-
-                // Only handle text messages for now
-                String text = getAsString(message);
-                if (text == null || text.isBlank()) {
                     processedUpdates.add(updateId);
                     continue;
                 }
 
-                // Determine where to reply:
-                // 1) If you configured a default chat id, use it
-                // 2) Otherwise reply back to the chat the update came from
+                // Only handle text messages for now
+                String text = getAsString(message, "text");
+                if (text == null || text.isBlank()) {
+                    processedUpdates.add(updateId);
+                    continue;
+                }
+                
+                // Skip updates newer than 1 minute
+                // Use message date (or edit_date for edited messages)
+                Long msgUnix = getAsLong(message, "date");
+                if (msgUnix == null) msgUnix = getAsLong(message, "edit_date"); // optional
+
+                long nowSec = System.currentTimeMillis() / 1000L;
+                long ageSec = (msgUnix != null) ? (nowSec - msgUnix) : Long.MAX_VALUE;
+
+                if (ageSec > 60) {
+                    processedUpdates.add(updateId);
+                    continue;
+                }
+
+                // Get chat object
+                JsonObject chatObj = getAsObject(message, "chat");
+                String chatType = chatObj != null ? getAsString(chatObj, "type") : null;
+                Long chatIdFromUpdate = chatObj != null ? getAsLong(chatObj, "id") : null;
+
+                // Decide the chat id to send to
                 String chatIdToUse = this.defaultChatId;
-                if (chatIdToUse == null || chatIdToUse.isBlank()) {
-                    JsonObject chatObj = getAsObject(message, "chat");
-                    Long chatIdFromUpdate = chatObj != null ? getAsLong(chatObj, "id") : null;
+
+                // If the message came from a group, use that group's id
+                if ("group".equalsIgnoreCase(chatType) || "supergroup".equalsIgnoreCase(chatType)) {
+                    if (chatIdFromUpdate != null) {
+                        chatIdToUse = String.valueOf(chatIdFromUpdate);
+                    }
+                } else if (chatIdToUse == null || chatIdToUse.isBlank()) {
                     if (chatIdFromUpdate != null) {
                         chatIdToUse = String.valueOf(chatIdFromUpdate);
                     }
@@ -83,15 +107,25 @@ public class MessageHelper {
                     continue; // nowhere to send
                 }
 
+   
+
                 UpdateMessage out = new UpdateMessage();
                 out.setMessage(text);
                 out.setChatId(chatIdToUse);
-                // out.setSetParseMode("Markdown"); // enable if you need formatting
+                out.setParseMode("Markdown");
 
-                messagesToSend.add(out);
+                UpdateMessage commandResponse = commandHandler.processCommand(out);
+                if (commandResponse != null) {
+                    messagesToSend.add(commandResponse);
+                } else {
+                    // Handle non-command messages here if needed
+                    // For now, we'll just add the original message
+                    messagesToSend.add(out);
+                }
+
                 processedUpdates.add(updateId);
 
-                // Simple memory cap (avoid unbounded growth)
+                // Simple memory cap
                 if (processedUpdates.size() > 10_000) {
                     processedUpdates.clear();
                 }
@@ -104,6 +138,7 @@ public class MessageHelper {
         return messagesToSend;
     }
 
+
     // --------- small JSON helpers to avoid NPEs ----------
 
     private static JsonObject getAsObject(JsonObject obj, String key) {
@@ -112,11 +147,25 @@ public class MessageHelper {
         return e != null && e.isJsonObject() ? e.getAsJsonObject() : null;
     }
 
-    private static String getAsString(JsonObject obj) {
-        if (obj == null || !obj.has("text")) return null;
-        JsonElement e = obj.get("text");
-        return (e != null && !e.isJsonNull()) ? e.getAsString() : null;
+    private static String getAsString(JsonObject obj, String key) {
+        if (obj == null || key == null) {
+            return null;
+        }
+        if (!obj.has(key)) {
+            return null;
+        }
+        JsonElement element = obj.get(key);
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        try {
+            return element.getAsString();
+        } catch (UnsupportedOperationException | ClassCastException e) {
+            // If the field exists but isn't a string (e.g., number), safely return null
+            return null;
+        }
     }
+
 
     private static Long getAsLong(JsonObject obj, String key) {
         if (obj == null || !obj.has(key)) return null;

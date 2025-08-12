@@ -1,29 +1,38 @@
 package com.telegramskbot.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-
 import com.telegramskbot.model.UpdateMessage;
 import com.telegramskbot.service.TelegramBotService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
+@RestController
 public class TelegramBotController {
 
-    @Autowired
+    private final TelegramBotService telegramBotService;
+
     public TelegramBotController(TelegramBotService telegramBotService) {
+        this.telegramBotService = telegramBotService;
     }
-    
+
     @PostMapping("/sendMessage")
-    public String sendMessage(@RequestParam String chatId, @RequestParam String message) {
-        // Create a message object to send to the Telegram service
-        UpdateMessage telegramMessage = new UpdateMessage();
-        telegramMessage.setChatId(chatId);
-        telegramMessage.setMessage(message);
+    public ResponseEntity<String> sendMessage(@RequestParam String chatId, @RequestParam String message) {
+        try {
+            // Create a message object to send to the Telegram service
+            UpdateMessage telegramMessage = new UpdateMessage();
+            telegramMessage.setChatId(chatId);
+            telegramMessage.setMessage(message);
+            telegramMessage.setParseMode("Markdown"); // Set parse mode for consistency with AlertSchedulerService
 
-        // Call the service to send the message to Telegram
-        TelegramBotService.sendMessage(telegramMessage);
+            // Call the service to send the message to Telegram
+            telegramBotService.sendMessage(telegramMessage);
 
-        // Return confirmation message to the user
-        return "Message sent successfully!";
+            // Return confirmation message to the user
+            return ResponseEntity.ok("Message sent successfully!");
+        } catch (Exception e) {
+            // Return error response if sending fails
+            return ResponseEntity.status(500).body("Error sending message: " + e.getMessage());
+        }
     }
 }

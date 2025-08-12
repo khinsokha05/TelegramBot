@@ -1,77 +1,108 @@
 package com.telegramskbot.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.telegramskbot.model.UpdateMessage;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.client.RestClientException;
 
-import com.telegramskbot.model.UpdateMessage;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class TelegramBotService {
 
-    private final static String BOT_API_URL = "https://api.telegram.org/bot";
-    private final static String BOT_TOKEN = "6195519007:AAFD7fSkiyD4Tlds-zb_MbcaeMpmPxPHUYo";
+    private final RestTemplate restTemplate;
+    private final String botToken;
 
-    private static RestTemplate restTemplate = new RestTemplate();
-
-    // Constructor-based dependency injection
-    @Autowired
-    public TelegramBotService(RestTemplate restTemplate) {
-        TelegramBotService.restTemplate = restTemplate;
+    public TelegramBotService(RestTemplate restTemplate, @Value("${telegram.bot.token}") String botToken) {
+        this.restTemplate = restTemplate;
+        this.botToken = botToken;
     }
 
-    public static void sendMessage(UpdateMessage telegramMessage) {
+    /**
+     * Sends a message to Telegram using POST with JSON body to avoid URL-encoding issues.
+     * Handles parse_mode if set in the UpdateMessage.
+     */
+    public void sendMessage(UpdateMessage telegramMessage) {
+        String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
 
-        String url = UriComponentsBuilder.fromHttpUrl(BOT_API_URL + BOT_TOKEN + "/sendMessage")
-                .queryParam("chat_id", telegramMessage.getChatId())
-                .queryParam("text", telegramMessage.getMessage())
-                .toUriString();
+        Map<String, Object> body = new HashMap<>();
+        body.put("chat_id", telegramMessage.getChatId());
+        body.put("text", telegramMessage.getMessage());
+        if (telegramMessage.getParseMode() != null) {
+            body.put("parse_mode", telegramMessage.getParseMode());
+        }
 
-        System.out.println("url : "  + url);
-        restTemplate.getForObject(url, String.class);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+        try {
+            System.out.println("Sending message to chatId: " + telegramMessage.getChatId());
+            System.out.println("Message: " + telegramMessage.getMessage());
+            System.out.println("Request body: " + body);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            System.out.println("Message sent successfully: " + response.getBody());
+        } catch (RestClientException e) {
+            System.err.println("Error sending message: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // Re-throw to allow higher-level handling
+        }
     }
-    
 
+    /**
+     * Overloaded method to send a simple message with chatId and text.
+     * Returns the response or error message.
+     */
     public String sendMessage(String chatId, String message) {
+        String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("chat_id", chatId);
+        body.put("text", message);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
         try {
             System.out.println("Sending message to chatId: " + chatId);
             System.out.println("Message: " + message);
-            
-            String url = UriComponentsBuilder.fromHttpUrl(BOT_API_URL + BOT_TOKEN + "/sendMessage")
-                                            .queryParam("chat_id", chatId)
-                                            .queryParam("text", message)
-                                            .toUriString();
+            System.out.println("Request body: " + body);
 
-            System.out.println("Request URL: " + url);
-
-            String response = restTemplate.getForObject(url, String.class);
-
-            return response; 
-        } catch (Exception e) {
-            // If an exception occurs, return an error message
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            System.out.println("Message sent successfully: " + response.getBody());
+            return response.getBody();
+        } catch (RestClientException e) {
+            System.err.println("Error sending message: " + e.getMessage());
             e.printStackTrace();
             return "Error sending message: " + e.getMessage();
         }
     }
 
-      /**
-     * Gets updates from Telegram server using long polling
+    /**
+     * Gets updates from Telegram server using long polling.
      */
     public String getUpdates() {
-        String url = UriComponentsBuilder.fromHttpUrl(BOT_API_URL + BOT_TOKEN + "/getUpdates")
-        .toUriString();               
-       
+        String url = "https://api.telegram.org/bot" + botToken + "/getUpdates";
+
         try {
             System.out.println("Getting updates from Telegram...");
-            String response = restTemplate.getForObject(url, String.class);
-            System.out.println("Updates received: " + response);
-            return response;
-        } catch (Exception e) {
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            System.out.println("Updates received: " + response.getBody());
+            return response.getBody();
+        } catch (RestClientException e) {
+            System.err.println("Error getting updates: " + e.getMessage());
             e.printStackTrace();
             return "Error getting updates: " + e.getMessage();
         }
     }
-    
 }

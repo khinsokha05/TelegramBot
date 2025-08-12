@@ -3,14 +3,8 @@ package com.telegramskbot.model;
 public class UpdateMessage {
     private String chatId;
     private String message;
-    private String setParseMode;
+    private String parseMode;
     
-    public String getSetParseMode() {
-        return setParseMode;
-    }
-    public void setSetParseMode(String setParseMode) {
-        this.setParseMode = setParseMode;
-    }
     public String getChatId() {
         return chatId;
     }
@@ -23,6 +17,11 @@ public class UpdateMessage {
     public void setMessage(String message) {
         this.message = message;
     }
+    public String getParseMode() {
+        return parseMode;
+    }
+    public void setParseMode(String parseMode) {
+        this.parseMode = parseMode;
+    }
     
-
 }
